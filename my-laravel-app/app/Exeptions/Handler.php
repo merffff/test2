@@ -40,32 +40,37 @@ class Handler extends ExceptionHandler
     }
 
 
-    public function render($request, Throwable $e): Response
+    public function render($request, Throwable $e): \Symfony\Component\HttpFoundation\Response
     {
-
-        if ($e instanceof ValidationException) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) {
             return response()->json([
                 'message' => 'Ошибка валидации',
                 'errors' => $e->errors(),
             ], 422);
         }
 
-        if ($e instanceof AuthenticationException) {
+        if ($e instanceof \Illuminate\Auth\AuthenticationException) {
             return response()->json([
-                'message' => 'Неавторизованный доступ.',
+                'message' => 'Вы не авторизованы',
             ], 401);
         }
 
-        if ($e instanceof ModelNotFoundException || $e instanceof NotFoundHttpException) {
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
             return response()->json([
-                'message' => 'Ресурс не найден.',
+                'message' => 'Ресурс не найден',
             ], 404);
         }
 
+        \Log::error('Ошибка сервера', [
+            'message' => $e->getMessage(),
+            'trace' => config('app.debug') ? $e->getTrace() : [],
+        ]);
+
         return response()->json([
-            'message' => 'Произошла непредвиденная ошибка.',
+            'message' => 'Внутренняя ошибка сервера',
             'error' => config('app.debug') ? $e->getMessage() : null,
         ], 500);
     }
+
 }
 

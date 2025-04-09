@@ -9,6 +9,13 @@ class DaDataService
 {
     public const CACHE_TTL = 3600; // 1 hour cache
     private const API_URL = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address';
+    private string $apiKey;
+
+    public function __construct()
+    {
+        $this->apiKey = config('services.dadata.api_key');
+    }
+
 
     public function searchAddress(string $query): array
     {
@@ -39,7 +46,7 @@ class DaDataService
         return Http::withHeaders([
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-            'Authorization' => 'Token ' . config('services.dadata.api_key'),
+            'Authorization' => 'Token ' .$this->apiKey,
         ])->post(self::API_URL, [
             'query' => $query,
         ]);
