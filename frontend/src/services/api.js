@@ -12,7 +12,6 @@ const api = axios.create({
     }
 });
 
-// Add token to all requests if it exists
 api.interceptors.request.use(config => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -22,7 +21,6 @@ api.interceptors.request.use(config => {
     return config;
 });
 
-// Handle responses and errors
 api.interceptors.response.use(
     response => {
         console.log('Response:', response);
@@ -39,7 +37,6 @@ api.interceptors.response.use(
     }
 );
 
-// Auth services
 export const login = async (email, password) => {
     try {
         console.log('Login attempt:', { email, password: '***' });
@@ -69,7 +66,6 @@ export const getCurrentUser = () => {
     return JSON.parse(localStorage.getItem('user'));
 };
 
-// Address services
 export const searchAddresses = (query) => {
     return api.post('/addresses/search', { query });
 };

@@ -1,99 +1,53 @@
 <?php
 
-
 namespace App\Http\Controllers;
 
-use App\Models\Address;
+use App\DTO\AddressDTO;
+use App\Http\Requests\SearchAddressRequest;
+use App\Http\Requests\StoreAddressRequest;
+use App\Services\AddressService;
+use App\Services\DaDataService;
+use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 
 class AddressController extends Controller
 {
-    const MAX_ADDRESSES = 10;
-    const CACHE_TTL = 60 * 60; // 1 hour cache
+    public function __construct(
+        private readonly DaDataService $daDataService,
+        private readonly AddressService $addressService
+    ) {
+    }
 
-    public function search(Request $request)
+    public function search(SearchAddressRequest $request): JsonResponse
     {
-        $request->validate([
-            'query' => 'required|string|min:3',
-        ]);
-
-        $query = $request->input('query');
-
-        // Try to get from cache first
-        $cacheKey = 'dadata_' . md5($query);
-
-        if (Cache::has($cacheKey)) {
-            return response()->json(Cache::get($cacheKey));
-        }
-
-        // Make request to DaData API
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-            'Accept' => 'application/json',
-            'Authorization' => 'Token ' . env('DADATA_API_KEY'),
-        ])->post('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address', [
-            'query' => $query,
-        ]);
-
-        if ($response->successful()) {
-            $data = $response->json();
-
-            // Cache the response
-            Cache::put($cacheKey, $data, self::CACHE_TTL);
-
+        try {
+            $query = $request->input('query');
+            $data = $this->daDataService->searchAddress($query);
             return response()->json($data);
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        return response()->json(['error' => 'Failed to fetch addresses'], 500);
     }
 
-    public function store(Request $request)
+    public function store(StoreAddressRequest $request): JsonResponse
     {
-        $request->validate([
-            'full_address' => 'required|string',
-            'address_data' => 'required|array',
-        ]);
+        try {
+            $addressDTO = AddressDTO::fromArray($request->validated());
+            $result = $this->addressService->saveAddress($request->user(), $addressDTO);
 
-        $user = $request->user();
-
-        // Check if user already has 10 addresses
-        if ($user->addresses()->count() >= self::MAX_ADDRESSES) {
             return response()->json([
-                'message' => 'You can save maximum 10 addresses',
-            ], 400);
+                'message' => $result['message'],
+                'address' => $result['address'],
+            ], $result['status']);
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
         }
-
-        // Check if address already exists for this user
-        $existingAddress = $user->addresses()
-            ->where('full_address', $request->full_address)
-            ->first();
-
-        if ($existingAddress) {
-            return response()->json([
-                'message' => 'Address already saved',
-                'address' => $existingAddress,
-            ], 200);
-        }
-
-        // Create new address
-        $address = $user->addresses()->create([
-            'full_address' => $request->full_address,
-            'address_data' => $request->address_data,
-        ]);
-
-        return response()->json([
-            'message' => 'Address saved successfully',
-            'address' => $address,
-        ], 201);
     }
 
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $addresses = $user->addresses()->orderBy('created_at', 'desc')->get();
-
+        $addresses = $this->addressService->getUserAddresses($request->user());
         return response()->json($addresses);
     }
 }
