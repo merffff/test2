@@ -30,9 +30,8 @@ class AddressController extends Controller
         $result = $this->addressService->saveAddress($request->user(), $addressDTO);
 
         return response()->json([
-            'message' => $result['message'],
             'address' => $result['address'],
-        ], $result['status']);
+        ]);
     }
 
     public function index(Request $request): JsonResponse

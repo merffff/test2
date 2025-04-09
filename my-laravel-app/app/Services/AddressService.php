@@ -18,27 +18,20 @@ class AddressService
             ->toArray();
     }
 
-    public function saveAddress(User $user, AddressDTO $addressDTO): array
+    public function saveAddress(User $user, AddressDTO $addressDTO): Address
     {
         $this->checkAddressLimit($user);
 
         $existingAddress = $this->findExistingAddress($user, $addressDTO->fullAddress);
 
         if ($existingAddress) {
-            return [
-                'message' => 'Address already saved',
-                'address' => $existingAddress,
-                'status' => 200
-            ];
+            return $existingAddress;
         }
+
 
         $address = $user->addresses()->create($addressDTO->toArray());
 
-        return [
-            'message' => 'Address saved successfully',
-            'address' => $address,
-            'status' => 201
-        ];
+        return $address;
     }
 
     private function checkAddressLimit(User $user): void
